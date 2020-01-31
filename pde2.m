@@ -22,7 +22,7 @@ function varargout = pde2(varargin)
 
 % Edit the above text to modify the response to help pde2
 
-% Last Modified by GUIDE v2.5 09-Dec-2019 15:57:05
+% Last Modified by GUIDE v2.5 16-Dec-2019 16:00:06
 
 
 % Begin initialization code - DO NOT EDIT
@@ -865,20 +865,32 @@ function export_stim_points_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-
-
 [filename1,filepath1]=uigetfile({'*.nii','All Files'},...
     'Select a nifti template');
 nifti = load_nii([filepath1, filename1]);
 nifti.img(:,:,:) = 0;
+average = nifti.img;
 nifti_w = nifti;
 coordinates = handles.coordinates(:,1:3);
 square = str2num(handles.vox_fill_stim_points.String);
+value = get(handles.checkbox_weights, 'Value');
+maxvalue = max(handles.coordinates(:, 4))
 for kk= 1:length(coordinates)
    [xx yy zz] = mni2orFROMxyz(coordinates(kk,1),coordinates(kk,2),coordinates(kk,3),1,'mni');
-   nifti.img(floor(xx), floor(yy), floor(zz)) = 1;
-   nifti.img(-square+floor(xx):square+floor(xx), -square+floor(yy):square+floor(yy), -square+floor(zz):square+floor(zz)) = 1;
-
+   if(value ==1)
+       to_save = handles.coordinates(kk, 4) * 100
+       nifti.img(floor(xx), floor(yy), floor(zz)) = to_save +  nifti.img(floor(xx), floor(yy), floor(zz));
+       average(floor(xx), floor(yy), floor(zz)) = average(floor(xx), floor(yy), floor(zz)) + 1;
+       nifti.img(-square+floor(xx):square+floor(xx), -square+floor(yy):square+floor(yy), -square+floor(zz):square+floor(zz)) = to_save + nifti.img(-square+floor(xx):square+floor(xx), -square+floor(yy):square+floor(yy), -square+floor(zz):square+floor(zz));
+       average(-square+floor(xx):square+floor(xx), -square+floor(yy):square+floor(yy), -square+floor(zz):square+floor(zz)) = 1 + average(-square+floor(xx):square+floor(xx), -square+floor(yy):square+floor(yy), -square+floor(zz):square+floor(zz));
+   else
+       nifti.img(floor(xx), floor(yy), floor(zz)) = 1;
+       nifti.img(-square+floor(xx):square+floor(xx), -square+floor(yy):square+floor(yy), -square+floor(zz):square+floor(zz)) = 1;
+   end
+end
+if(value ==1)
+    average(average == 0) = 1;
+    nifti.img = nifti.img./average;
 end
 filename = handles.stim_points_filename.String{1};
 niftisave = strcat(filename,'.nii');
@@ -963,3 +975,12 @@ for ii = 1:length(brainmodels)
     brainlist{ii} = erase(brainmodels(ii).name, '_graph.mat');
 end
 set(hObject, 'String', brainlist);
+
+
+% --- Executes on button press in checkbox_weights.
+function checkbox_weights_Callback(hObject, eventdata, handles)
+% hObject    handle to checkbox_weights (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of checkbox_weights
